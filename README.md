@@ -1,6 +1,6 @@
 # ratelimit - a token bucket ratelimiter for rust
 
-ratelimit provides a token bucket ratelimiter which can be used by a single thread, or shared across threads by using a channel to push tokens to the ratelimiter
+ratelimit provides a token bucket ratelimiter which can be used by a single thread, or shared across threads;
 
 The API documentation of this library can be found at
 [docs.rs/ratelimit](https://docs.rs/ratelimit/).
@@ -28,12 +28,6 @@ To use `ratelimit`, first add this to your `Cargo.toml`:
 ```toml
 [dependencies]
 ratelimit = "*"
-```
-
-Then, add this to your crate root:
-
-```rust
-extern crate ratelimit;
 ```
 
 ## Features
