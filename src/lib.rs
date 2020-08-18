@@ -48,10 +48,11 @@ impl Builder {
     /// Build a simplest multi thread rate limiter.
     ///
     /// No wake ordering guarantees.
-    pub fn multi_thread(self) -> crate::multi_thread::Limiter {
+    pub fn multi_thread(self) -> std::sync::Arc<crate::multi_thread::Limiter> {
         let inner = self.single_thread();
         let inner = Mutex::new(inner);
-        crate::multi_thread::Limiter { inner }
+        let result = crate::multi_thread::Limiter { inner };
+        std::sync::Arc::new(result)
     }
 
     /// Sets the number of tokens to add per interval.
