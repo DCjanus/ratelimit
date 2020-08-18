@@ -1,12 +1,6 @@
 use std::time::{Duration, Instant};
 
-use crate::{Builder, MAX_DURATION};
-
-impl Default for Limiter {
-    fn default() -> Limiter {
-        crate::Builder::default().single_thread()
-    }
-}
+use crate::MAX_DURATION;
 
 /// Single-threaded rate limiter.
 pub struct Limiter {
@@ -18,10 +12,6 @@ pub struct Limiter {
 }
 
 impl Limiter {
-    pub fn builder() -> Builder {
-        Builder::default()
-    }
-
     fn update(&mut self) {
         let elapsed = self.last_tick.elapsed();
         let round = elapsed.as_nanos() / self.interval.as_nanos();
@@ -93,8 +83,12 @@ impl Limiter {
             return Err(MAX_DURATION);
         }
 
-        let required = Duration::from_nanos(required_round as u64);
+        let required = Duration::from_nanos(required_nanos as u64);
         let until = self.last_tick + required;
-        Err(until - now)
+        if until <= now {
+            self.virtual_wait_for(count)
+        } else {
+            Err(until - now)
+        }
     }
 }

@@ -3,24 +3,22 @@
 
 #![cfg_attr(feature = "cargo-clippy", deny(warnings))]
 
-#[cfg(feature = "unstable")]
-extern crate test;
-
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-pub use crate::single_thread::Limiter;
-
-mod single_thread;
+pub mod multi_thread;
+pub mod single_thread;
 
 /// Maximum acceptable duration in this crate, which is `2^64` nanoseconds,
 /// about 20 years.
 pub const MAX_DURATION: Duration = Duration::from_nanos(u64::MAX);
 
 /// A builder for a rate limiter.
+#[derive(Clone)]
 pub struct Builder {
     capacity: u64,
     quantum: u64,
-    start_with: u64,
+    initial: Option<u64>,
     interval: Duration,
 }
 
@@ -31,27 +29,29 @@ impl Builder {
     }
 
     /// Build a single thread rate limiter.
-    ///
-    /// # Example
-    /// ```
-    /// # use ratelimit::Builder;
-    ///
-    /// let mut r = Builder::new().single_thread();
     pub fn single_thread(self) -> crate::single_thread::Limiter {
         let Self {
             capacity,
             quantum,
-            start_with,
+            initial,
             interval,
         } = self;
-        let start_with = start_with.min(capacity);
         crate::single_thread::Limiter {
             capacity,
             quantum,
-            available: start_with,
+            available: initial.unwrap_or(capacity).min(capacity),
             interval,
             last_tick: Instant::now(),
         }
+    }
+
+    /// Build a simplest multi thread rate limiter.
+    ///
+    /// No wake ordering guarantees.
+    pub fn multi_thread(self) -> crate::multi_thread::Limiter {
+        let inner = self.single_thread();
+        let inner = Mutex::new(inner);
+        crate::multi_thread::Limiter { inner }
     }
 
     /// Sets the number of tokens to add per interval.
@@ -83,9 +83,9 @@ impl Builder {
 
     /// Set the available tokens in the beginning.
     ///
-    /// Default value is `capacity`.
-    pub fn start_with(mut self, start_with: u64) -> Self {
-        self.start_with = start_with;
+    /// Default value is `None`, which means same as `capacity`.
+    pub fn initial(mut self, initial: Option<u64>) -> Self {
+        self.initial = initial;
         self
     }
 }
@@ -96,7 +96,7 @@ impl Default for Builder {
             capacity: 1,
             quantum: 1,
             interval: Duration::from_secs(1),
-            start_with: 1,
+            initial: None,
         }
     }
 }
